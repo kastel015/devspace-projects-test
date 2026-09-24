@@ -217,12 +217,32 @@ const STORAGE_KEY = 'devspace_projects_v1';
 const $ = id => document.getElementById(id);
 
 /* ===== Хранилище: try/catch защищает от «битых» данных ===== */
+/* Проверка формы каждого отдельного проекта: защищает от «битых» объектов без title, status и т.д. */
+function isValidProject(p){
+  return Boolean(
+    p &&
+    typeof p === 'object' &&
+    typeof p.title === 'string' && p.title.trim().length > 0 &&
+    typeof p.status === 'string' && (p.status in STATUSES) &&
+    typeof p.category === 'string' && (p.category in CATEGORIES) &&
+    typeof p.deadline === 'string' &&
+    typeof p.description === 'string'
+  );
+}
+
+/* ===== Хранилище: валидация массива И каждого элемента внутри ===== */
 function load(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const data = JSON.parse(raw);
-      if(Array.isArray(data)) return data;
+      if(Array.isArray(data)){
+        // Отфильтровываем повреждённые объекты без обязательных полей
+        const validProjects = data.filter(isValidProject);
+        if(validProjects.length > 0){
+          return validProjects;
+        }
+      }
     }
   }catch(err){ console.warn('Хранилище повреждено, загружаю тестовые данные', err); }
   const seeded = [...SEED];
