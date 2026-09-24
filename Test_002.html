@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<!-- Автор: Давид Кануков. Тестовое задание: страница «Проекты» -->
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Управление проектами | DevSpace</title>
+<style>
+:root{
+  --bg:#f4f6fb; --card:#fff; --text:#1c2333; --muted:#667085;
+  --line:#e4e8f1; --accent:#4f46e5; --accent-h:#4338ca; --danger:#dc2626;
+  --radius:14px; --shadow:0 10px 26px rgba(28,35,51,.08);
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important} /* надёжно прячем блоки через hidden */
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 "Segoe UI",system-ui,Arial,sans-serif}
+.container{max-width:1100px;margin:0 auto;padding:0 16px}
+
+header{background:var(--card);border-bottom:1px solid var(--line);padding:16px 0}
+h1{margin:0;font-size:20px}
+.sub{color:var(--muted);font-size:13px}
+main{padding:22px 0 60px}
+
+/* Статистика */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.stat b{display:block;font-size:24px}
+.stat span{color:var(--muted);font-size:13px}
+
+/* ВАЖНО ДЛЯ МОБИЛКИ: поиск и кнопка переносятся и не перекрываются */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.toolbar input[type=search]{flex:1 1 260px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:15px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+select{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:14px;color:var(--text)}
+
+.btn{border:0;cursor:pointer;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-h)}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.btn-danger{background:var(--danger);color:#fff}
+
+/* Карточки */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
+.card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.card h3{margin:0;font-size:16px}
+.icon-btn{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;padding:4px 8px;border-radius:8px}
+.icon-btn:hover{background:#fdecec;color:var(--danger)}
+.badges{display:flex;flex-wrap:wrap;gap:6px}
+.badge{font-size:12px;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.st-in_progress{background:#e0e7ff;color:#3730a3}
+.st-planning{background:#fef3c7;color:#92400e}
+.st-paused{background:#e5e7eb;color:#374151}
+.st-done{background:#dcfce7;color:#166534}
+.cat{background:#f1f5f9;color:#475569}
+.desc{margin:0;color:var(--muted);font-size:13.5px;flex:1}
+.progress{height:8px;background:#eef1f7;border-radius:99px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted)}
+.meta .overdue{color:var(--danger);font-weight:600}
+
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:var(--radius);padding:40px 20px;text-align:center;color:var(--muted)}
+.empty .btn{margin-top:12px}
+
+/* Модальные окна */
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;z-index:50}
+.modal.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;width:100%;max-width:520px;padding:22px;margin:auto 0}
+.modal-box h2{margin:0 0 4px;font-size:18px}
+.modal-box .note{color:var(--muted);font-size:13px;margin:0 0 16px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit}
+.field textarea{min-height:74px;resize:vertical}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.range-out{color:var(--accent);font-weight:700}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+
+@media (max-width:480px){
+  .field-row{grid-template-columns:1fr}
+  .btn-create{width:100%}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>Управление проектами</h1>
+    <div class="sub">DevSpace · реестр проектов</div>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="stats">
+    <div class="stat"><b id="stTotal">0</b><span>Всего проектов</span></div>
+    <div class="stat"><b id="stActive">0</b><span>В работе</span></div>
+    <div class="stat"><b id="stPlan">0</b><span>Планирование</span></div>
+    <div class="stat"><b id="stDone">0</b><span>Завершено</span></div>
+  </section>
+
+  <section class="toolbar">
+    <input type="search" id="search" placeholder="Поиск по названию и описанию…">
+    <button class="btn btn-primary btn-create" id="openCreate">+ Создать проект</button>
+  </section>
+
+  <section class="filters">
+    <select id="fStatus"></select>
+    <select id="fCategory"></select>
+    <select id="fSort">
+      <option value="new">Сначала новые</option>
+      <option value="old">Сначала старые</option>
+      <option value="deadline">По дедлайну</option>
+      <option value="progress">По прогрессу</option>
+    </select>
+  </section>
+
+  <section id="list" class="grid"></section>
+
+  <section id="empty" class="empty" hidden>
+    <p><b>Ничего не найдено</b><br>По текущим фильтрам или запросу проекты отсутствуют.</p>
+    <button class="btn btn-ghost" id="reset">Сбросить параметры</button>
+  </section>
+</main>
+
+<!-- Форма создания -->
+<div class="modal" id="createModal">
+  <form class="modal-box" id="createForm">
+    <h2>Новый проект</h2>
+    <p class="note">Заполните параметры для добавления в реестр</p>
+    <div class="field">
+      <label for="pTitle">Название проекта *</label>
+      <input id="pTitle" required minlength="3" maxlength="80" placeholder="Например: Витрина каталога">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="pCategory">Категория *</label>
+        <select id="pCategory" required></select>
+      </div>
+      <div class="field">
+        <label for="pStatus">Статус *</label>
+        <select id="pStatus" required></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="pDeadline">Дедлайн *</label>
+        <input type="date" id="pDeadline" required>
+      </div>
+      <div class="field">
+        <label for="pBudget">Бюджет (₽)</label>
+        <input type="number" id="pBudget" min="0" step="1000" placeholder="500000">
+      </div>
+    </div>
+    <div class="field">
+      <label for="pProgress">Прогресс готовности — <span class="range-out" id="progressOut">35%</span></label>
+      <input type="range" id="pProgress" min="0" max="100" value="35">
+    </div>
+    <div class="field">
+      <label for="pDesc">Краткое описание проекта *</label>
+      <textarea id="pDesc" required minlength="10" placeholder="1–2 предложения о цели проекта"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" data-close>Отмена</button>
+      <button type="submit" class="btn btn-primary">Сохранить</button>
+    </div>
+  </form>
+</div>
+
+<!-- Подтверждение удаления -->
+<div class="modal" id="deleteModal">
+  <div class="modal-box">
+    <h2>Удалить проект?</h2>
+    <p class="note">Это действие нельзя отменить. Проект будет полностью удалён из реестра.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-close>Отмена</button>
+      <button class="btn btn-danger" id="confirmDelete">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== ЕДИНЫЕ СЛОВАРИ: форма, фильтры и карточки больше не расходятся ===== */
+const STATUSES   = { in_progress:'В работе', planning:'Планирование', paused:'На паузе', done:'Завершён' };
+const CATEGORIES = { web:'Веб-сервис', mobile:'Мобильное приложение', infra:'Инфраструктура', ai:'ИИ / ML' };
+
+/* ===== ТОЛЬКО ТЕСТОВЫЕ ДАННЫЕ (загружаются при первом открытии) ===== */
+const SEED = [
+  { id:'p1', title:'Личный кабинет клиента', category:'web', status:'in_progress',
+    deadline:'2026-11-15', budget:1200000, progress:65,
+    description:'Портал для клиентов: договоры, счета, обращения в поддержку.',
+    createdAt:'2026-07-02T10:00:00.000Z' },
+  { id:'p2', title:'Приложение доставки еды', category:'mobile', status:'planning',
+    deadline:'2026-12-20', budget:2500000, progress:10,
+    description:'iOS и Android: меню, корзина, трекинг курьера на карте.',
+    createdAt:'2026-09-10T09:30:00.000Z' },
+  { id:'p3', title:'ML-рекомендации товаров', category:'ai', status:'in_progress',
+    deadline:'2026-10-25', budget:900000, progress:40,
+    description:'Модель рекомендаций для каталога и A/B-тестирование выдачи.',
+    createdAt:'2026-08-14T12:00:00.000Z' },
+  { id:'p4', title:'Миграция в Kubernetes', category:'infra', status:'paused',
+    deadline:'2026-09-05', budget:600000, progress:55,
+    description:'Перенос сервисов в K8s, CI/CD-пайплайны и мониторинг.',
+    createdAt:'2026-06-20T08:00:00.000Z' },
+  { id:'p5', title:'Редизайн интернет-магазина', category:'web', status:'done',
+    deadline:'2026-08-30', budget:750000, progress:100,
+    description:'Новая дизайн-система, адаптивная вёрстка, ускорение загрузки.',
+    createdAt:'2026-05-05T11:00:00.000Z' },
+  { id:'p6', title:'Чат-бот поддержки', category:'ai', status:'done',
+    deadline:'2026-09-10', budget:420000, progress:100,
+    description:'Бот отвечает на типовые вопросы и передаёт диалог оператору.',
+    createdAt:'2026-09-01T15:00:00.000Z' }
+];
+
+const STORAGE_KEY = 'devspace_projects_v1';
+const $ = id => document.getElementById(id);
+
+/* ===== Хранилище: try/catch защищает от «битых» данных ===== */
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const data = JSON.parse(raw);
+      if(Array.isArray(data)) return data;
+    }
+  }catch(err){ console.warn('Хранилище повреждено, загружаю тестовые данные', err); }
+  const seeded = [...SEED];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
+  return seeded;
+}
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(projects)); }
+
+/* ===== Вспомогательные функции ===== */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); // защита от XSS
+const todayISO = () => { const d = new Date(), p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
+const fmtDate  = iso => new Date(iso + 'T00:00:00').toLocaleDateString('ru-RU', {day:'numeric', month:'short', year:'numeric'});
+const fmtMoney = n => new Intl.NumberFormat('ru-RU').format(n) + ' ₽';
+
+function fillSelect(sel, dict, allLabel){
+  sel.innerHTML = (allLabel ? `<option value="all">${allLabel}</option>` : '') +
+    Object.entries(dict).map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+}
+
+/* ===== Отрисовка ===== */
+function cardHTML(p){
+  const overdue = p.status !== 'done' && p.deadline < todayISO();
+  return `<article class="card">
+    <div class="card-top">
+      <h3>${esc(p.title)}</h3>
+      <button class="icon-btn" data-del="${p.id}" title="Удалить проект" aria-label="Удалить проект">✕</button>
+    </div>
+    <div class="badges">
+      <span class="badge st-${p.status}">${STATUSES[p.status] || p.status}</span>
+      <span class="badge cat">${CATEGORIES[p.category] || p.category}</span>
+    </div>
+    <p class="desc">${esc(p.description)}</p>
+    <div class="progress" title="Готовность ${p.progress}%"><i style="width:${p.progress}%"></i></div>
+    <div class="meta">
+      <span${overdue ? ' class="overdue"' : ''}>📅 ${fmtDate(p.deadline)}${overdue ? ' · просрочен' : ''}</span>
+      <span>💰 ${fmtMoney(p.budget)}</span>
+      <span>Готовность: ${p.progress}%</span>
+    </div>
+  </article>`;
+}
+
+function render(){
+  const q    = $('search').value.trim().toLowerCase();
+  const st   = $('fStatus').value;
+  const cat  = $('fCategory').value;
+  const sort = $('fSort').value;
+
+  let list = projects.filter(p =>
+    (st === 'all' || p.status === st) &&
+    (cat === 'all' || p.category === cat) &&
+    (!q || p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q))
+  );
+
+  const sorters = {
+    new:      (a,b) => b.createdAt.localeCompare(a.createdAt),
+    old:      (a,b) => a.createdAt.localeCompare(b.createdAt),
+    deadline: (a,b) => a.deadline.localeCompare(b.deadline),
+    progress: (a,b) => b.progress - a.progress
+  };
+  list.sort(sorters[sort]);
+
+  $('list').innerHTML = list.map(cardHTML).join('');
+  $('list').hidden  = list.length === 0;
+  $('empty').hidden = list.length > 0;
+
+  $('stTotal').textContent  = projects.length;
+  $('stActive').textContent = projects.filter(p => p.status === 'in_progress').length;
+  $('stPlan').textContent   = projects.filter(p => p.status === 'planning').length;
+  $('stDone').textContent   = projects.filter(p => p.status === 'done').length;
+}
+
+/* ===== Модальные окна ===== */
+function openModal(m){ m.classList.add('open'); document.body.style.overflow = 'hidden'; }
+function closeModals(){
+  document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModals(); });
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if(e.target === m) closeModals(); }));
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModals));
+
+/* ===== События ===== */
+$('search').addEventListener('input', render);
+['fStatus','fCategory','fSort'].forEach(id => $(id).addEventListener('change', render));
+
+$('openCreate').addEventListener('click', () => {
+  $('createForm').reset();
+  $('progressOut').textContent = '35%';
+  openModal($('createModal'));
+  $('pTitle').focus();
+});
+
+$('pProgress').addEventListener('input', e => $('progressOut').textContent = e.target.value + '%');
+
+$('createForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const form = e.target;
+  if(!form.checkValidity()){ form.reportValidity(); return; } // встроенная валидация
+  projects.unshift({
+    id: (crypto.randomUUID ? crypto.randomUUID() : 'p' + Date.now()),
+    title: $('pTitle').value.trim(),
+    category: $('pCategory').value,
+    status: $('pStatus').value,
+    deadline: $('pDeadline').value,
+    budget: Number($('pBudget').value) || 0,
+    progress: Number($('pProgress').value),
+    description: $('pDesc').value.trim(),
+    createdAt: new Date().toISOString()
+  });
+  save(); render(); closeModals(); form.reset();
+});
+
+let deleteId = null;
+$('list').addEventListener('click', e => {
+  const btn = e.target.closest('[data-del]');
+  if(!btn) return;
+  deleteId = btn.dataset.del;
+  openModal($('deleteModal'));
+});
+$('confirmDelete').addEventListener('click', () => {
+  projects = projects.filter(p => p.id !== deleteId);
+  save(); render(); closeModals();
+});
+
+$('reset').addEventListener('click', () => {
+  $('search').value = ''; $('fStatus').value = 'all';
+  $('fCategory').value = 'all'; $('fSort').value = 'new';
+  render();
+});
+
+/* ===== Старт ===== */
+fillSelect($('fStatus'), STATUSES, 'Все статусы');
+fillSelect($('fCategory'), CATEGORIES, 'Все категории');
+fillSelect($('pStatus'), STATUSES);
+fillSelect($('pCategory'), CATEGORIES);
+let projects = load();
+render();
+</script>
+</body>
+</html>
